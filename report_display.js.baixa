@@ -1,0 +1,212 @@
+/**
+ # *************************************************************
+ #  Copyright 2019-2025 ANSYS, Inc.
+ #  All Rights Reserved.
+ #
+ #  Restricted Rights Legend
+ #
+ #  Use, duplication, or disclosure of this
+ #  software and its documentation by the
+ #  Government is subject to restrictions as
+ #  set forth in subdivision [(b)(3)(ii)] of
+ #  the Rights in Technical Data and Computer
+ #  Software clause at 52.227-7013.
+ # *************************************************************
+ #
+ * */
+
+$(document).ready(function () {
+    // show/hide panel templates
+    $(".panel-expander").click(function (e) {
+        // get the target <adr-panel> to toggle
+        let templateDiv = $(this).attr("data-target-panel");
+        // toggle target: panel body
+        // Selection logic: provide shadowDOM context for jQuery to further select child element in it
+        $(templateDiv+'_body', $(templateDiv)[0].shadowRoot).toggle();
+        // toggle plus and minus icons in panels
+        updateToggle(this);
+    });
+
+    // regenerate elements in target tab, when switching tabs.
+    $('adr-tabs').on('adr-tab-active-start', function (e) {
+        // exe the following if active tab changed
+        const nextActiveTabLink = e.detail.tabRecord.nextActiveTab.tabLink;
+        if(nextActiveTabLink.getAttribute('aria-selected') === 'false'){
+            // get all panzoom div sits under <adr-tabs>'s shadow DOM
+            const panzooms = $('.panzoom-div' ,this.ShadowRoot);
+            panzooms.each(function () {
+                const parentId = $(this).attr("data-parent-id");
+                // not always available
+                if (window[`panZoomUI_${parentId}`].initPanzoom) {
+                    const section = $(this).attr("data-section-name");
+                    // re-init panzoom
+                    window[`panZoomUI_${parentId}`].initPanzoom(section, true);
+                }
+            });
+        }
+    });
+
+    // pptx downloads
+    const downloadLinks = document.querySelectorAll('.pptx-download-link');
+    downloadLinks.forEach(link => {
+        link.addEventListener('click', function (event) {
+            baseUtils.showLoading('start', $(this), '...');
+            event.preventDefault(); // Prevent the default anchor action
+            const url = this.href;
+            const fileName = this.getAttribute('download');
+
+            let request = new FetchClient({responseType: 'blob'});
+            request.get(url)
+                .then(blob => {
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(downloadUrl);
+                })
+                .catch(e => {
+                    baseUtils.notify(e.message, 'error');
+                })
+                .finally(() => {
+                    baseUtils.showLoading('stop', $(this));
+                });
+        });
+    });
+
+    /*listen to anchor clicks, find the hidden element and go up ancestors.
+    - if it's inside a tab, activate
+    - if it's inside a panel, show
+    - if it's inside a tree, expand */
+    $('#report_root').on('click', '.toc_root a, a.nexus-link, a.nexus-anchor', function (e) {
+        const targetNode = document.querySelector(this.getAttribute('href'));
+        // if it's an actual link, exit
+        if (!targetNode) {
+            return;
+        }
+        // don't jump to the anchor yet.
+        e.preventDefault();
+        let parent = targetNode.parentNode;
+        let loadQueue = new Queue();
+        let loadTracker = new Map();
+        // traverse up the DOM tree until reach report_root element
+        while (parent.id !== "report_root") {
+            // check if its hidden
+            const $parent = $(parent);
+            // unhide it
+            const guid = baseUtils.getUniqueId();
+            // for tabs (check 1-level up to see if its <adr-tabs>)
+            // !! Note that we still need current parent to get its slot id !!
+            if (parent.parentNode.tagName === 'ADR-TABS') {
+                loadQueue.enqueue(guid);
+                loadTracker.set(guid, false);
+                // get nav link based on the tab's slot value, the following value are all the same
+                //  1. tab's "slot"
+                //  2. parent <section>'s "id"
+                //  3. tab link <a></a>'s "aria-controls"
+                const tabIdx = parent.getAttribute('slot');
+                const nav = parent.parentNode.shadowRoot.querySelector(`a[aria-controls="${tabIdx}"]`);
+                // async call to set guid in LoadTracker back to true after tab fn finished
+                const setLoaded = function(event) {
+                    loadTracker.set(guid, true);
+                };
+                // event listener will only fire once then remove the listener itself
+                parent.parentNode.addEventListener('adr-tab-active-end', setLoaded, {once:true});
+
+                // use <adr-tabs>'s built-in tab toggle method
+                parent.parentNode.tabContentToggle(nav);
+
+            // for panel (Unlike adr-tabs, no need to check 1 level up further in advance)
+            } else if (parent.tagName === 'ADR-PANEL') {
+                const panelBody = parent.shadowRoot.getElementById(`${parent.id}_body`);
+                // if panel body is collapsed
+                if (panelBody.style.display === 'none') {
+                    loadQueue.enqueue(guid);
+                    loadTracker.set(guid, true);
+                    // expand the panel body
+                    panelBody.style.display = '';
+                    const expander = $(`.panel-expander[data-target-panel="#${parent.id}"]`);
+                    updateToggle(expander);
+                }
+
+            // for tree
+            //  *tree sits inside <adr-data-item> as its child elements so...
+            //  NO need to check if parent node is in shadow DOM)
+            } else if ($parent.hasClass("tree-row")) {
+                loadQueue.enqueue(guid);
+                let grandParentId = $parent.attr("data-parent");
+                while (grandParentId !== '0') {
+                    const grandParent = document.getElementById(grandParentId);
+                    expandSubtree(grandParent);
+                    grandParentId = $(grandParent).attr("data-parent");
+                }
+                loadTracker.set(guid, true);
+            }
+            // move up
+            parent = parent.parentNode;
+        }
+
+        while (!loadQueue.isEmpty()) {
+            const divGuid = loadQueue.peek();
+            if (loadTracker.get(divGuid))
+                loadQueue.dequeue();
+        }
+
+        // scroll
+        const nav = $("#main_navbar_container");
+        const extraOffset = 15;
+        const nodePos = $(targetNode).offset().top - extraOffset;
+        let offset = nav.length > 0 ? nodePos - nav.height() : nodePos;
+        $('html, body').animate({scrollTop: offset}, 1000);
+    });
+
+    //if 'toc_container' element exists apply ToC sidebar styles by default 
+    if ($('#toc_container').length) {
+        $('#toc_container').addClass('toc-sidebar-container');
+        $('#report_root').addClass('toc-sidebar-report-root');
+        $('.toc_root').addClass('toc-sidebar-ul');
+        $('#toc_container a').addClass('toc-sidebar-a');
+        $('footer').addClass('toc-sidebar-footer');
+        $('hr').addClass('toc-sidebar-hr');
+    }
+
+    // if there's 3d plots, add print event listeners to display all proxy images (No activation btn) on print mode
+    if(window['adr3DPlotMap']){
+        // fn to update the display of proxy container & proxy activation btn
+        function updateProxyDisplay(printMode=true){
+            // get the proxy container's ID, NO need to get any extra info
+            const adr3DPlotMapIterable = window['adr3DPlotMap'].keys();
+            const inactivePlotList = window['adr3DPlotsInstanceList'].slice(window["adr3DPlotMaxInstance"],);
+
+            for(const proxyContainerID of adr3DPlotMapIterable){
+                const UUID = proxyContainerID.split('plot_proxy_container_')[1];
+                const dataItemContainer = document.getElementById('data_item_'+UUID);
+                // access shadow DOM
+                const proxyContainer = dataItemContainer.querySelector('.webgl_proxy_container');
+                const proxyActivationBtn = dataItemContainer.querySelector('.webgl_proxy_play');
+                // update proxy display
+                proxyContainer.style['visibility'] = printMode ? 'visible'
+                    : inactivePlotList.indexOf(UUID) !== -1 ?
+                        'visible'
+                        :
+                        'hidden';
+                proxyActivationBtn.style['visibility'] = printMode ? 'hidden'
+                    : inactivePlotList.indexOf(UUID) !== -1 ?
+                        'visible'
+                        :
+                        'hidden';
+            }
+        }
+        // add beforeprint event listeners to return to the display status before print
+        window.addEventListener('beforeprint',function(e){
+            updateProxyDisplay(true);
+        });
+        // add beforeprint event listeners to return to the display status before print
+        window.addEventListener('afterprint',function(e){
+            updateProxyDisplay(false)
+        });
+    }
+
+});

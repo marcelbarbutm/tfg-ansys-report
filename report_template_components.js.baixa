@@ -1,0 +1,718 @@
+/*
+ * ************************************************************
+ *   Copyright 2024-2025 ANSYS, Inc. Unauthorized use, distribution,
+ *                           or duplication is prohibited.
+ *   All Rights Reserved.
+ *
+ *   Restricted Rights Legend
+ *
+ *   Use, duplication, or disclosure of this
+ *   software and its documentation by the
+ *   Government is subject to restrictions as
+ *   set forth in subdivision [(b)(3)(ii)] of
+ *   the Rights in Technical Data and Computer
+ *   Software clause at 52.227-7013.
+ *  *************************************************************
+ */
+
+// Restrict a block scope
+{
+    // custom element map
+    const elementsMap = new Map();
+    const elementDefinedList = [];
+
+    // shadowDOM template declaration function
+    function templateDefine(webComponentObject) {
+        // Get the <template>...</template> generated from the server side
+        // (If the component has shadow DOM defined, it'll always be the first child of the component)
+        const templateContent = webComponentObject.children[0];
+        // (If the component's 1st children is <template> => If yes, then it has a server-side render shadow Root )
+        const hasServerRenderedShadowRoot = templateContent ? templateContent.tagName === "TEMPLATE" : false;
+        // If component has shadow DOM defined and did not declared from the server side
+        // then hydrate the component's shadow DOM & template code here
+        if (!webComponentObject.shadowRoot && hasServerRenderedShadowRoot) {
+            // attached shadow root if not declared on the server side
+            const shadow = webComponentObject.attachShadow({mode: 'open'});
+            // define component template
+            const template = document.createElement('template');
+            template.innerHTML = templateContent.innerHTML;
+            // append template inside shadow DOM
+            shadow.append(template.content.cloneNode(true));
+            // remove <template>
+            templateContent.remove();
+        }
+    }
+
+    // import dynamic stylesheet
+    function styleSheetImport(thisEle) {
+        // get the style path & hosting app's style path attribute (if any) from root element:
+        //   * If using <adr-report> to embed ADR in external app, select <adr-report> (PyADR method, deprecated as of v252!!!)
+        //   * If using <adr-offline-report /> to embed ADR in external app, select <adr-offline-report /> (django/utils/remote/adr_offline_report_src)
+        //   * If using Qt WebEngine to generate report, select <adr-report-root>
+        const rootEle = (
+            document.querySelector('adr-report-root') || 
+            document.querySelector('adr-report') || 
+            document.querySelector('adr-offline-report')
+        );
+        // Only when in report page OR embed report through <adr-offline-report /> OR <adr-report> should we add the stylesheet(s)
+        if (rootEle) {
+            const rootStylePath = rootEle.getAttribute("root-style-path") || "";
+            const hostStylePath = rootEle.getAttribute("host-style-path") || "";
+            // get the href path for site.css as reference (All other ADR stylesheets will be in the same directory)
+            // (*Make path to be dynamic catering for command to download as offline HTML)
+            let dynamicRootDir = document.querySelector("link[href$='site.css']").getAttribute("href")
+            dynamicRootDir = dynamicRootDir.slice(0, dynamicRootDir.lastIndexOf('/'))
+            // if there's shadowRoot then append the <link> based on root-style-path & host-style-path attribute value
+            if (thisEle.shadowRoot) {
+                // toggle between Bootstrap (default) & ADL (Ansys Design Language) or other stylesheet
+                if (rootStylePath) {
+                    // alternative stylesheet directory (i.e. ADL css file, TODO: Include ADL css file in the future)
+                    this.shadowRoot.innerHTML += `
+                            <link rel="stylesheet" href="${dynamicRootDir}/${rootStylePath}" />
+                        `;
+                } else {
+                    // default Bootstrap v5.3
+                    thisEle.shadowRoot.innerHTML += `
+                            <link rel="stylesheet" href="${dynamicRootDir}/adr-web-components.css" />
+                        `;
+                }
+
+                // Add hosting app's stylesheet path if specified
+                if (hostStylePath) {
+                    thisEle.shadowRoot.innerHTML += `
+                        <link rel="stylesheet" href="${hostStylePath}" />
+                    `
+                }
+            }
+        }
+    }
+
+    // Shared web component layout classes
+    class BasicLayout extends HTMLElement {
+        constructor() {
+            super();
+            templateDefine(this);
+        }
+
+        connectedCallback() {
+            // import stylesheets
+            styleSheetImport(this)
+        }
+    }
+    class FunctionalLayout extends HTMLElement {
+        constructor() {
+            super();
+            templateDefine(this);
+            // init <adr-data-filter-template>
+            if (this.tagName === "ADR-DATA-FILTER-TEMPLATE") {
+                this._lastFilterInfo = null;
+                this._currentFilterInfo = null;
+            }
+            // init props for <adr-data-item> that are plots
+            if (this.tagName === "ADR-DATA-ITEM") {
+                this._plotId = null;
+                this._plotTheme = null;
+                this._plotDefaultTheme = null;
+                this._plotData = null;
+                this._plotLayout = null;
+                this._plotOptions = null;
+            }
+        }
+
+        // Helper fn for tabs hide & show:
+        //  "targetEle" can be a tab link tag <a></a> OR a tab content tag <section></section>
+        //  "reactiveEle" will get active/deactive based on the active status of the "targetEle"
+        tabContentToggle(targetEle) {
+            // record the previous active tab links/content, the new (about to) active tab will store later
+            const tabRecord = {
+                tabContainer: this,
+                currentActiveTab: {
+                    tabLink: this.shadowRoot.querySelector('.adr-tabs-nav-item>.link[aria-selected="true"]'),
+                    tabContent: this.shadowRoot.querySelector('.adr-tabs-content[aria-selected="true"]')
+                }
+            }
+            // Only exe when the target tab link OR tab content is inactive
+            if (targetEle.getAttribute('aria-selected') !== 'true') {
+                // for tabs hide/show, targetEle can be a tab link tag <a></a> OR a tab content tag <section></section>
+                const reactiveEle = targetEle.tagName === 'A' ?
+                    this.shadowRoot.getElementById(targetEle.getAttribute('aria-controls'))
+                    :
+                    this.shadowRoot.querySelector(`[aria-controls="${targetEle.getAttribute('id')}"]`);
+
+                tabRecord.nextActiveTab = {
+                    tabLink: targetEle,
+                    tabContent: reactiveEle
+                }
+
+                // Fire "adr-tab-active-start" when the tab activation process starts;
+                targetEle.dispatchEvent(new CustomEvent('adr-tab-active-start', {
+                    detail: {
+                        tabRecord
+                    },
+                    bubbles: true,
+                    composed: true
+                }))
+
+                // loop thru all tabs and reset active tab
+                for (let idx = 0; idx < this.tabLinks.length; idx++) {
+                    // Only reset tabs that are active
+                    if (this.tabLinks[idx].getAttribute('aria-selected') === 'true') {
+                        // tab links
+                        this.tabLinks[idx].classList.remove('active');
+                        this.tabLinks[idx].setAttribute('aria-selected', 'false');
+                        // tab contents
+                        this.tabContents[idx].classList.remove('active');
+                        this.tabContents[idx].setAttribute('aria-selected', 'false');
+                    }
+                }
+
+                // show the selected tab's content OR tab's link
+                targetEle.classList.add('active');
+                targetEle.setAttribute('aria-selected', 'true');
+                reactiveEle.classList.add('active');
+                reactiveEle.setAttribute('aria-selected', 'true');
+
+                // Fire "adr-tab-active-end" when the tab activation process finish;
+                targetEle.dispatchEvent(new CustomEvent('adr-tab-active-end', {
+                    detail: {
+                        tabRecord
+                    },
+                    bubbles: true,
+                    composed: true
+                }))
+
+            } else {
+                // store the tab record, fire the event and do nothing
+                tabRecord.nextActiveTab = {...tabRecord.currentActiveTab};
+                // Fire "adr-tab-active-start" when the tab activation process starts;
+                targetEle.dispatchEvent(new CustomEvent('adr-tab-active-start', {
+                    detail: {
+                        tabRecord
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
+                // Fire "adr-tab-active-end" when the tab activation process finish;
+                targetEle.dispatchEvent(new CustomEvent('adr-tab-active-end', {
+                    detail: {
+                        tabRecord
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
+            }
+        }
+
+        // <adr-carousel> interaction
+        carouselInit() {
+            // select shadow root
+            const shadow = this.shadowRoot;
+            // carousel next btn
+            const nextBtn = shadow.querySelector('.adr-carousel-control-next');
+            // carousel prev btn
+            const prevBtn = shadow.querySelector('.adr-carousel-control-prev');
+            // carousel indicator btns
+            const indicatorBtns = shadow.querySelectorAll('.adr-carousel-indicator');
+            // carousel inner slides
+            const slides = shadow.querySelectorAll('.adr-carousel-item');
+            const slidesLength = slides.length - 1
+
+            // set the current slide index
+            let currentIdx = 0
+            let evtBlock = false;
+
+            // reusable carousel interaction fn
+            function slideChange(direction = undefined, tgtIdx = undefined) {
+
+                // flip the switch to block any redundant click events
+                evtBlock = !evtBlock;
+
+                const startClass = direction === 'next' || tgtIdx > currentIdx ?
+                    'adr-carousel-item-start' :
+                    'adr-carousel-item-end'
+                const nextClass = direction === 'next' || tgtIdx > currentIdx ?
+                    'adr-carousel-item-next' :
+                    'adr-carousel-item-prev'
+
+                const nextIdx = tgtIdx >= 0 ? tgtIdx
+                    :
+                    direction === 'next' ?
+                        currentIdx + 1 > slidesLength ? 0 : currentIdx + 1
+                        :
+                        currentIdx - 1 < 0 ? slidesLength : currentIdx - 1
+
+                // reset the carousel items order
+                slides[currentIdx].style.order = 0
+                slides[nextIdx].style.order = 1
+
+                // set display: block to the next item first
+                slides[nextIdx].classList.add(nextClass);
+                slides[currentIdx].classList.add(startClass);
+
+                // change indicator btns' state
+                indicatorBtns[currentIdx].classList.remove('active');
+                indicatorBtns[currentIdx].setAttribute("aria-current", "false")
+                indicatorBtns[nextIdx].classList.add('active');
+                indicatorBtns[nextIdx].setAttribute("aria-current", "true");
+
+                // init animation ( *Need to run ONLY AFTER the next item's display = block )
+                setTimeout(function () {
+                    slides[nextIdx].classList.add(startClass);
+                    // dispatch resize event for plotly to resize plot properly
+                    window.dispatchEvent(new Event('resize'));
+                }, 10)
+
+                // clear the class after .6s of the transition
+                setTimeout(function () {
+                    slides[currentIdx].classList.remove(startClass);
+                    slides[currentIdx].classList.remove('active');
+
+                    slides[nextIdx].classList.remove(nextClass);
+                    slides[nextIdx].classList.remove(startClass);
+                    slides[nextIdx].classList.add('active');
+
+                    // update currentIdx
+                    currentIdx = nextIdx;
+                    // flip back the switch to allow click event again
+                    evtBlock = !evtBlock;
+                }, 600)
+            }
+
+            // next + prev btn event handler
+            nextBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                !evtBlock && slideChange('next');
+            });
+            prevBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                !evtBlock && slideChange('prev');
+            });
+            // indicator btn(s) event handler
+            for (let indicator of indicatorBtns) {
+                indicator.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const tgtIdx = Number(this.getAttribute('data-slide-to'));
+                    !evtBlock && tgtIdx !== currentIdx && slideChange(undefined, tgtIdx);
+                })
+            }
+        }
+
+        // Helper fn to update 3d plot camera view's data & proxy image
+        Update3DPlotCamera(plotContainer, proxyContainer, proxyImg) {
+            // update proxy image to reflect the latest data
+            plotContainer.on('plotly_relayout', function (e) {
+                Plotly.toImage(plotContainer)
+                    .then(function (url) {
+                        proxyImg.setAttribute("src", url);
+                        // update camera view if camera data is defined
+                        if (e['scene.camera']) {
+                            window['adr3DPlotMap'].get(proxyContainer.id).layout.scene.camera = e['scene.camera'];
+                        }
+                    });
+            });
+        }
+
+        // Helper fn to update 3d plot's proxy image on the latest filtered data view
+        Update3DPlotDataView(plotContainer, proxyImg) {
+            plotContainer.on('plotly_restyle', function (e) {
+                Plotly.toImage(plotContainer)
+                    .then(url => {
+                        proxyImg.setAttribute("src", url);
+                    });
+            });
+        }
+
+        // Plotly light/dark mode toggle
+        plotThemeToggle(loader, proxyActivationBtn, themeMode){
+            const plotContainer = this.querySelector('.nexus-plot');
+            // if no plot (when report is destroyed) then stop & exit
+            if(!plotContainer ) return
+
+            const axisArr = ["xaxis", "yaxis"];
+            // show spinning loader if it's hidden to avoid unintentional click actions
+            if(loader.style.display === 'none') loader.style.display = 'block';
+            const theme = this._plotTheme[themeMode].layout;
+            const activeWebGLPlot = plotContainer.childElementCount > 0;
+            const proxyImg = this.querySelector('.webgl_proxy_img');
+            // update themes
+            this._plotLayout.paper_bgcolor = theme.paper_bgcolor;
+            this._plotLayout.plot_bgcolor = theme.plot_bgcolor;
+            this._plotLayout.font.color = theme.font.color;
+
+            axisArr.map(axis => {
+                // map theme config per axis (if any)
+                if(this._plotLayout[axis]){
+                    this._plotLayout[axis].gridcolor = theme[axis].gridcolor;
+                    this._plotLayout[axis].zerolinecolor = theme[axis].zerolinecolor;
+
+                    if(this._plotLayout[axis].linecolor){
+                        this._plotLayout[axis].linecolor = theme[axis].linecolor;
+                    }
+                }
+            });
+
+            // check if it's 3d plots
+            if(proxyActivationBtn) {
+                // add zaxis
+                axisArr.push("zaxis");
+                // map theme config
+                axisArr.map(axis => {
+                    this._plotLayout.scene[axis].gridcolor = theme[axis].gridcolor;
+                    this._plotLayout.scene[axis].zerolinecolor = theme[axis].zerolinecolor;
+                    this._plotLayout.scene[axis].spikecolor = theme[axis].spikecolor;
+
+                    if(this._plotLayout.scene[axis].linecolor){
+                        this._plotLayout.scene[axis].linecolor = theme[axis].linecolor;
+                    }
+                });
+            }
+
+            // rerender
+            Plotly.react(this._plotId, this._plotData, this._plotLayout).then(()=>{
+                // if it's 3d plot, update proxy image
+                if(proxyActivationBtn) {
+                    Plotly.toImage(plotContainer)
+                        .then(url => {
+                            proxyImg.setAttribute("src", url);
+                        })
+                        .then(()=>{
+                            // if it's not active 3d plot, after layout/render update, then purge the plot
+                            if(!activeWebGLPlot){
+                                Plotly.purge(plotContainer.id);
+                            }
+                            // done proxy update & purge inactive 3d plot, then hide the loader again
+                            loader.style.display = "none";
+                        });
+                } else {
+                    // for normal 2d plot, hide the loader again on rerender completes
+                    loader.style.display = "none";
+                }
+            });
+        }
+
+        // setter & getter to set & retrieve data filter event data
+        set filterInfo(value) {
+            if (this._currentFilterInfo) {
+                // Not init state, then update both last filter and current filter info
+                this._lastFilterInfo = this._currentFilterInfo;
+                this._currentFilterInfo = value;
+            } else {
+                // init state
+                this._currentFilterInfo = value;
+            }
+        }
+        get filterInfo() {
+            return {
+                'last_filter_info': this._lastFilterInfo,
+                'current_filter_info': this._currentFilterInfo
+            }
+        }
+
+        // Helper fn to init a popup modal
+        modalInit(){
+            // modal toggle fn
+            function modalToggle (e) {
+                // selectors
+                e.stopPropagation();
+                const triggeredEle = this;
+                const isCloseControlBackdrop = triggeredEle.classList.contains('adr-modal-backdrop');
+                const modalContainerID = triggeredEle.getAttribute('data-modal');
+                const modalContainer = document.querySelector(`${modalContainerID}`);
+                const modalDialog = modalContainer.querySelector('.adr-modal-dialog');
+
+                const modalBackdrop = (isCloseControlBackdrop) ?
+                    triggeredEle
+                    :
+                    document.querySelector(`${this.getAttribute('data-modal-backdrop')}`);
+
+                const isHidden = modalContainer.getAttribute('aria-hidden') === 'true';
+                // toggle based on the 'aria-hidden' value
+                if(isHidden){
+                    // dispatch adr-modal-show custom event
+                    modalDialog.dispatchEvent(new CustomEvent('adr-modal-show', {
+                        detail: {
+                            'modal-container': modalContainer
+                        },
+                        bubbles: true,
+                        composed: true
+                    }));
+                    // prevent accessibility conflicts for when apply aria-hidden attr to focusable element
+                    // for more details:
+                    // update aria-hidden
+                    modalContainer.removeAttribute("aria-hidden");
+                    modalBackdrop.removeAttribute("aria-hidden");
+                    modalContainer.classList.add('show');
+                    modalBackdrop.classList.add('show');
+                    document.body.classList.add('none-scrollable');
+                    // delay to add class upon the transition is completed
+                    setTimeout(()=>{
+                        modalDialog.classList.add('show')
+                    },150);
+
+                }else {
+
+                    // dispatch adr-modal-show custom event
+                    modalDialog.dispatchEvent(new CustomEvent('adr-modal-hide', {
+                        detail: {
+                            'modal-container': modalContainer
+                        },
+                        bubbles: true,
+                        composed: true
+                    }));
+                    // Move focus back to a logical place (e.g., the button that opened the modal)
+                    document.querySelector(`${modalContainer.getAttribute('data-modal-control')}`).focus();
+                    modalDialog.classList.remove('show');
+                    // delay to add class upon the transition is completed
+                    setTimeout(()=>{
+                        modalContainer.classList.remove('show');
+                        modalBackdrop.classList.remove('show');
+                        document.body.classList.remove('none-scrollable');
+                        // update aria-hidden
+                        modalContainer.setAttribute('aria-hidden', 'true');
+                        modalBackdrop.setAttribute('aria-hidden', 'true');
+
+                    },300);
+                }
+            }
+
+            // get the modal buttons
+            const modalShowControls = this.querySelectorAll('.adr-modal-show-control');
+            for(let showControl of modalShowControls){
+                const targetModalID = showControl.getAttribute('data-modal');
+                const targetModalBackdropID = showControl.getAttribute('data-modal-backdrop');
+                const targetModalBackdrop = this.querySelector(`${targetModalBackdropID}`);
+                const closeBtn = this.querySelector(`${targetModalID} .adr-btn-close`);
+                const applyChangesBtn = this.querySelector(`${targetModalID} .adr-slider-template-apply-btn`);
+                // modal show controls event listeners
+                showControl.addEventListener('click', modalToggle);
+                targetModalBackdrop.addEventListener('click', modalToggle);
+                closeBtn.addEventListener('click', modalToggle);
+                applyChangesBtn.addEventListener('click', modalToggle);
+            }
+        }
+
+        // exe. fn after web component is connected (web component's lifecycle hook)
+        connectedCallback() {
+            // import stylesheets
+            styleSheetImport(this)
+
+            // For <adr-tabs>
+            if (this.tagName === "ADR-TABS") {
+                this.tabLinks = this.shadowRoot.querySelectorAll('.adr-tabs-nav-item>.link');
+                // select the tab contents inside the component's <slot>...</slot>
+                this.tabContents = this.shadowRoot.querySelectorAll('.adr-tabs-content');
+
+                const tabContainer = this;
+                // Loop thru each tab link and attach an event listener to it
+                for (let idx = 0; idx < this.tabLinks.length; idx++) {
+                    // event listener binding for tab links
+                    this.tabLinks[idx].addEventListener('click', function (e) {
+                        // Only if the selected tab is inactive/not selected
+                        // then exe the activate the tab & its associated tab content
+                        tabContainer.tabContentToggle(this);
+                    })
+                }
+            }
+
+            // For <adr-data-item>
+            if (this.tagName === "ADR-DATA-ITEM") {
+                // select proxy image player
+                const proxyActivationBtn = this.querySelector('.webgl_proxy_play');
+                // spinning loader
+                const loader = this.querySelector('.adr-spinner-loader-container');
+                // plot div
+                const plotContainer = this.querySelector('.nexus-plot');
+                // proxy activation button is available, meaning it's a 3d plot,
+                // then handle activation/deactivation process
+                if (proxyActivationBtn) {
+                    // get the ansys version's static asset dir based on viewer-loader.js' directory
+                    // (use it to get the proxy activation button's image)
+                    const ansysVERStaticDir = document.querySelector("script[src$='viewer-loader.js']")
+                        .getAttribute("src").split('viewer-loader.js')[0];
+                    proxyActivationBtn.setAttribute('src', ansysVERStaticDir + 'images/play.png');
+                    const adrDataItem = this;
+                    const proxyContainer = this.querySelector('.webgl_proxy_container');
+                    const proxyImg = this.querySelector('.webgl_proxy_img');
+
+                    // click event binding to the 3d plot's proxy container to activate webgl
+                    proxyContainer.addEventListener('click', function (e) {
+                        // stop bubbling the click event up
+                        e.stopPropagation();
+                        // proxy activation btn
+                        const proxyActivationBtn = this.querySelector('.webgl_proxy_play');
+                        const containerID = this.id;
+                        const clickedUUID = containerID.split('plot_proxy_container_')[1];
+                        const fullPlotList = window['adr3DPlotsInstanceList'];
+                        const plotConfigs = window["adr3DPlotMap"].get(containerID);
+                        // plotly config to init new plot
+                        const plot = plotConfigs['plot'];
+                        const plotData = plotConfigs['data'];
+                        const plotLayout = plotConfigs['layout'];
+                        const plotOptions = plotConfigs['options'];
+
+                        // update instance list
+                        // Find the index of the value
+                        const clickedIdx = fullPlotList.indexOf(clickedUUID);
+                        const lastActivePlotPos = window["adr3DPlotMaxInstance"];
+                        fullPlotList.splice(clickedIdx, 1);
+                        // add the clicked plot (newly active instance) to the 5th (Max 4 instances) position
+                        // of the plot list (we'll deactive the 1st id and move it to the last position later)
+                        fullPlotList.splice(lastActivePlotPos, 0, clickedUUID);
+
+                        // hide the proxy container and btn
+                        this.style['visibility'] = 'hidden';
+                        proxyActivationBtn.style['visibility'] = 'hidden';
+
+                        // display loading spinner
+                        loader.style.display = 'inline-block';
+
+                        // activate 3d plot
+                        Plotly.newPlot(plot, plotData, plotLayout, plotOptions).then(gd => {
+                            // hide loading spinner on plot render completion after
+                            // plot init process complete for 300 ms
+                            setTimeout(function () {
+                                loader.style.display = "none";
+                            }, 150);
+
+                            // when Plotly purge the plot, the .on(...) event binder will get purged too,
+                            // so reinit the its event handler to update proxy image on new camera view/filtered data
+                            adrDataItem.Update3DPlotCamera(plotContainer, proxyContainer, proxyImg);
+                            adrDataItem.Update3DPlotDataView(plotContainer, proxyImg);
+
+                        }).then(function () {
+                            // plot init process complete, then starting the deactivation process...
+                            // always deactive the 1st plot on the list
+                            const deactiveID = fullPlotList[0];
+                            const deactiveContainer = document.getElementById('data_item_' + deactiveID);
+                            const deactiveProxyContainer = deactiveContainer.querySelector('.webgl_proxy_container');
+                            const deactiveProxyActivationBtn = deactiveContainer.querySelector('.webgl_proxy_play');
+                            // show the deactive plot's proxy container & activation btn
+                            deactiveProxyContainer.style['visibility'] = 'visible';
+                            deactiveProxyActivationBtn.style['visibility'] = 'visible';
+
+                            // deactivate 3d plot
+                            Plotly.purge('plot_' + deactiveID);
+                            // push the deactive id to the last position of the plot list
+                            const [recentDeactivatedIdx] = fullPlotList.splice(0, 1);
+                            fullPlotList.push(recentDeactivatedIdx);
+                        });
+                    });
+
+                    // exe callback fn when the plot is fully loaded
+                    const webglPlotInitObserver = new MutationObserver((mutation, observer) => {
+                        // init fn to update proxy image based on the latest camera view / filtered data
+                        // after 3d plot is fully rendered & when it's active (aka not been purged)
+                        if (
+                            plotContainer.classList.contains('loaded') &&
+                            plotContainer.childElementCount > 0
+                        ) {
+                            observer.disconnect(); // stop observing
+                            adrDataItem.Update3DPlotCamera(plotContainer, proxyContainer, proxyImg);
+                            adrDataItem.Update3DPlotDataView(plotContainer, proxyImg);
+                        }
+                    });
+                    webglPlotInitObserver.observe(plotContainer,
+                        { attributes: true, attributeFilter: ["class"] });
+                }
+                // if it's a 2d plot
+                if(loader) {
+                    const plotInitObserver = new MutationObserver((mutation, observer) => {
+                        // exe callback fn when the plot is fully loaded & has children (for active 3D plots)
+                        if (plotContainer.classList.contains("loaded") && plotContainer) {
+                            observer.disconnect(); // stop observing
+
+                            // watch attribute change on <html> tag to toggle light/dark mode rendering
+                            const plotThemeToggleObserver = new MutationObserver(([mutation]) => {
+                                if (mutation.attributeName === "data-bs-theme") {
+                                    let themeMode = document.documentElement.getAttribute("data-bs-theme");
+                                    this.plotThemeToggle(loader, proxyActivationBtn, themeMode);
+                                }
+                            });
+                            plotThemeToggleObserver.observe(document.documentElement,
+                                {attributes: true, attributeFilter: ["data-bs-theme"]});
+
+                            // if hosting app's default light/dark mode !== ADR's light/dark mode
+                            // triggered the plot to rerender
+                            let clientSideTheme = document.documentElement.getAttribute("data-bs-theme") || "light";
+                            if(clientSideTheme !== this._plotDefaultTheme) {
+                                this.plotThemeToggle(loader, proxyActivationBtn, clientSideTheme);
+                            }
+                        }
+                    });
+                    plotInitObserver.observe(plotContainer,
+                        { attributes: true, attributeFilter: ["class"] });
+                }
+            }
+
+            // For <adr-carousl>
+            if (this.tagName === "ADR-CAROUSEL") {
+                this.carouselInit();
+            }
+
+            // For <adr-data-filter-template>
+            if (this.tagName === "ADR-DATA-FILTER-TEMPLATE") {
+                // store filter_event data
+                this.addEventListener('filter_event', function (e) {
+                    this.filterInfo = e.detail;
+                });
+            }
+
+            // For <adr-slider-template>
+            if (this.tagName === "ADR-SLIDER-TEMPLATE") {
+                // init modal settings for deep-pixel images
+                this.modalInit();
+            }
+        }
+
+        disconnectedCallback(){
+            // when disconnected, clear the innerHTML
+            this.innerHTML = "";
+        }
+    }
+
+    // Report Template: Root (ADR report container)
+    // The root element for report fetch component: <adr-offline-report /> to target and fetch the report HTML nested inside
+    elementsMap.set("adr-report-root", BasicLayout);
+
+    // Report Template: Data Filter Template Layout
+    elementsMap.set("adr-data-filter-template", FunctionalLayout);
+
+    // Report Template: Slider Template Layout
+    elementsMap.set("adr-slider-template", FunctionalLayout);
+
+    // Reusable component: slider widget component
+    elementsMap.set("adr-slider-widget", FunctionalLayout);
+
+    // Report Template: Tabs Layout
+    elementsMap.set("adr-tabs", FunctionalLayout);
+
+    // Report Template: Panel Layout
+    elementsMap.set("adr-panel", BasicLayout);
+
+    // Report Template: Carousel Layout
+    elementsMap.set("adr-carousel", FunctionalLayout);
+
+    // Report Template: Data Item
+    elementsMap.set("adr-data-item", FunctionalLayout);
+
+    // Define the custom elements based on the map
+    for (const [key, val] of elementsMap.entries()) {
+        // defined elements using anonymous class extending from shared classes
+        customElements.define(key, class extends val {
+        });
+
+        // push elements in the defined list
+        elementDefinedList.push(customElements.whenDefined(key));
+    }
+
+    // check and await all elements are defined then fade in the contents
+    // to avoid "flash of unstyled custom elements" (FOUC)
+    // reference: https://www.abeautifulsite.net/posts/flash-of-undefined-custom-elements/
+    (async function () {
+        await Promise.allSettled(elementDefinedList);
+
+        // after all elements declaration and load are completed set a new class to <body> and unhide the content
+        document.body.classList.add("loaded");
+    })();
+}
