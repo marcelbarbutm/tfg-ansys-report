@@ -1,0 +1,343 @@
+﻿html {
+    --color-bg: #fff;
+    --color-btn-primary: #007bff;
+    --color-btn-primary-light: #99caff;
+    --color-focus-box-shadow: rgba(0, 123, 255, .25);
+    --color-bg-card-header: rgba(0, 0, 0, .125);
+    --color-bg-card-header-no-alpha: #d8d8d8;
+    --color-text-hover: #212529;
+    --color-bg-hover: rgba(0, 0, 0, .075);
+    --color-text-selected: white;
+    --color-bg-selected: #0275d8;
+    --color-ph-bg: #f7f7f7;
+}
+
+body {
+    font-family: Helvetica, Arial, sans-serif, monospace;
+    padding-top: 50px;
+    padding-bottom: 20px;
+}
+
+.text-monospace {
+    font-family: "Courier New", Courier, monospace;
+}
+
+/* Set padding to keep content from hitting the edges */
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* styles for validation helpers */
+.field-validation-error {
+    color: #b94a48;
+}
+
+.field-validation-valid {
+    display: none;
+}
+
+input.input-validation-error {
+    border: 1px solid #b94a48;
+}
+
+input[type="checkbox"].input-validation-error {
+    border: 0 none;
+}
+
+.validation-summary-errors {
+    color: #b94a48;
+}
+
+.validation-summary-valid {
+    display: none;
+}
+
+@keyframes cei_spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.cei_loader {
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    border: .25rem solid rgba(100, 100, 100, 51);
+    border-top-color: rgba(200, 200, 200, 255);
+    animation: cei_spinner 1.5s infinite linear;
+}
+
+th.dt-center, td.dt-center {
+    text-align: center;
+}
+
+#return_to_top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: none;
+    text-decoration: none;
+}
+
+/*break long words*/
+table.table-wrap tr td {
+    word-break: break-word;
+}
+
+/*fix the width to a minimum and turn off wrapping to appear condensed;
+content will decide the width beyond minimum width*/
+table.table-fit-head tr th, table.table-fit-body tr td {
+    width: 1px;
+    white-space: nowrap;
+}
+
+.custom-file {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    height: calc(2.25rem + 2px);
+    margin-bottom: 0;
+}
+
+/* Date time picker icon styling & hover */
+input[type=datetime-local]::-webkit-calendar-picker-indicator:hover{
+    transition: 150ms;
+}
+input[type=datetime-local]::-webkit-calendar-picker-indicator:hover {
+    cursor: pointer;
+    opacity: 0.4;
+}
+
+/*bootstrap4 sets caption-side as bottom by default,
+so we override that*/
+caption {
+    caption-side: top;
+    text-align: center;
+}
+
+.no-click {
+    pointer-events: none !important;
+}
+
+.deep-num::-webkit-outer-spin-button,
+.deep-num::-webkit-inner-spin-button {
+    /* display: none; <- Crashes Chrome on hover */
+    -webkit-appearance: none;
+    margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+}
+
+.deep-num {
+    -moz-appearance: textfield; /* Firefox */
+}
+
+.f-1r {
+    font-size: 1rem;
+}
+
+.avz-viewer .view-man-panel label:hover {
+    color: var(--color-btn-primary-light) !important;
+}
+
+/***Scrollbar theme****/
+
+/* Works on Firefox */
+* {
+    scrollbar-width: thin; /* "auto" or "thin" */
+    scrollbar-color: #888 var(--color-bg); /* scroll thumb and track */
+}
+
+/* Works on Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+    width: 6px; /*avoid scaling*/
+    height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--color-bg);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/***Scrollbar theme****/
+
+/*tree styling*/
+.treegrid-indent {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    position: relative;
+}
+
+table.tree-fit {
+    width: 1px;
+    white-space: nowrap;
+}
+
+/*tree styling*/
+
+
+/* Adding Jumbotron styling for Bootstrap v5 */
+.jumbotron{
+    padding: 2rem 1rem;
+}
+
+@media (min-width: 576px) {
+    .jumbotron{
+        padding: 1rem 2rem;
+    }
+}
+/* Adding Jumbotron styling for Bootstrap v5 */
+
+
+/* Form spacing for Bootstrap v5 */
+.form-group, .login-form-group{
+    margin-bottom: 1rem;
+}
+.login-form-group{
+    margin-bottom: 1rem;
+    width: 400px;
+}
+/* Form spacing for Bootstrap v5 */
+
+/* Define fixed width portion per each multi-search cell */
+.search-header-row > td:nth-of-type(1){
+    width: 14%;
+}
+.search-header-row > td:nth-of-type(2){
+    width: 23%;
+}
+.search-header-row > td:nth-of-type(3){
+    width: 23%;
+}
+.search-header-row > td:nth-of-type(4){
+    width: 32%;
+}
+.search-header-row > td:nth-of-type(5){
+    width: 8%;
+}
+
+/* Data Table styling modification - Bootstrap v5 */
+/* Stop overwrite styling of the selected row color and text color - in "Report Generation" UI */
+.table>:not(caption)>*>*{
+    background-color: inherit;
+    color: inherit;
+}
+
+tbody>tr:hover{
+    cursor: pointer;
+}
+
+.table td, .table th{
+    border-top: 1px solid #dee2e6;
+}
+
+table.dataTable td, table.dataTable th{
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sorting:after, .sorting:before, .sorting_asc:after, .sorting_asc:before, .sorting_desc:after, .sorting_desc:before{
+    top:0.3rem;
+}
+
+#report_table_length{
+    margin-bottom: 0.5rem;
+}
+
+a>.badge{
+    transition: 300ms;
+}
+a>.badge:hover{
+    background-color: RGBA(var(--bs-dark-rgb), var(--bs-bg-opacity, 1)) !important;
+}
+/* Data Table styling modification - Bootstrap v5 */
+
+/* Add additional styling for carousel to fix UI break */
+.carousel .carousel-indicators [data-bs-target], [data-bs-theme=dark].carousel .carousel-indicators [data-bs-target] {
+    background-color: var(--bs-dark) !important;
+}
+
+/* overwrite bootstrap slider styling, remove margin left */
+.slider.slider-horizontal{
+    margin-left: 0 !important;
+}
+/* Overwrites the Bootstrap tab layouts mechanism :
+   - Bootstrap: Using display:block / display:none to toggle on and off different tab panel contents, which will cause
+     a rendering error for the size of the threeJS viewer
+   - Source: https://stackoverflow.com/questions/17206631/why-are-bootstrap-tabs-displaying-tab-pane-divs-with-incorrect-widths-when-using
+*/
+.tab-content > .tab-pane:not(.active) {
+    display: block !important;
+    height: 0;
+    overflow-y: hidden;
+}
+/* for smaller screen */
+@media (max-width: 420px) {
+    .login-form-group{
+        width: 100%;
+    }
+}
+
+/***TOC Sidebar Styles***/
+.toc-sidebar-container {
+    box-shadow: 0px 0 1px rgba(0, 0, 0, 0.5);
+    height: 100%;
+    padding: 60px 5px 0px 8px;
+    position: fixed;
+    top: 0;
+    left: 0; 
+    width: 20%;
+    overflow: auto;
+    z-index: 10;
+    background: #FFFFFF;
+}
+
+.toc-sidebar-report-root {
+    margin-left: 21% !important;
+    width: 80% !important;
+}
+
+.toc-sidebar-ul {
+    padding: 0px 0px 0px 10px;
+    margin: 0;
+    list-style: none;
+    overflow-y: auto;  /* Add vertical scrolling */
+    height: calc(100% - 50px); 
+}
+
+.toc-sidebar-footer {
+    margin-left: 20% !important;
+    width: auto !important;
+}
+
+.toc-sidebar-hr {
+    opacity: 0 !important;
+}
+
+.toc-sidebar-a {
+    text-decoration: none !important;
+}
+
+.slider-type-dropdown-std {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 33%;
+    min-width: 33%;
+    margin-left: 55%;
+}
+
+.slider-type-dropdown-cmn {
+    width: 33%;
+    min-width: 33%;
+    margin-left: 50%;
+}

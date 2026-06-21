@@ -1,0 +1,441 @@
+/*
+CSS variables for dark mode colors.
+*/
+html[data-bs-theme=dark] {
+    --color-bg: #222;
+    --color-text-light: #fff;
+    --color-loading-bg: #000;
+    --color-bg-jumbotron: #303030;
+    --color-bg-card-header: #444;
+    --color-bg-card-header-no-alpha: #444;
+    --color-bg-table: #212529;
+    --color-table-hover: rgba(255, 255, 255, 0.075);
+    --color-table-selected: #0275d8;
+    --color-text-disabled: #adb5bd;
+    --color-focus-border: #80bdff;
+    --color-text-hover: #eee;
+    --color-bg-hover: var(--color-table-hover);
+    --color-text-selected: var(--color-text-light);
+    --color-bg-selected: var(--color-table-selected);
+    --color-ph-bg: #444;
+    --color-btn-primary-dark: #6ea8fe;
+}
+
+/*
+Note that it is not necessary to mention the data attribute
+selector in every single rule, but if we don't, the rule will
+apply during light mode as well, unless light mode is also
+given its own variables and rules. BUT, we use bootstrap and we
+don't have the need to manually specify each color variable for
+light mode, so we do that for dark mode instead.
+*/
+
+[data-bs-theme=dark] body {
+    background-color: var(--color-bg);
+    color: var(--color-text-light);
+}
+
+[data-bs-theme=dark] .jumbotron {
+    background-color: var(--color-bg-jumbotron) !important;
+}
+
+[data-bs-theme=dark] .text-muted {
+    color: inherit !important;
+}
+
+/*loading*/
+[data-bs-theme=dark] .loading-overlay {
+    color: var(--color-text-light);
+    background-color: var(--color-loading-bg);
+}
+/*loading*/
+
+/*cards*/
+[data-bs-theme=dark] .card {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-jumbotron);
+    border-color: var(--color-bg-card-header);
+}
+/*cards*/
+
+/*tables*/
+[data-bs-theme=dark] caption {
+    color: var(--color-text-light);
+}
+
+[data-bs-theme=dark] .table {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-table);
+}
+
+[data-bs-theme=dark] .table.slider-table {
+    color: var(--color-text-light);
+    background-color: inherit;
+}
+
+[data-bs-theme=dark] .table thead tr {
+    background-color: var(--color-bg-jumbotron);
+}
+
+[data-bs-theme=dark] .table th,
+[data-bs-theme=dark] .table td {
+    border-top-color: var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .table thead th {
+    border-bottom-color: var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .table tbody + tbody {
+    border-top-color: var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .table-hover tbody tr:hover {
+    background-color: var(--color-table-hover);
+    color: var(--color-text-light);
+}
+
+[data-bs-theme=dark] .table-bordered {
+    border-color: var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .table-bordered th,
+[data-bs-theme=dark] .table-bordered td {
+    border-color: var(--color-bg-card-header);
+}
+
+/*tables*/
+
+/*datatables*/
+[data-bs-theme=dark] table.dataTable tbody tr.selected,
+[data-bs-theme=dark] table.dataTable tbody th.selected,
+[data-bs-theme=dark] table.dataTable tbody td.selected {
+    color: var(--color-text-light);
+}
+
+[data-bs-theme=dark] table.dataTable tbody > tr.selected,
+[data-bs-theme=dark] table.dataTable tbody > tr > .selected {
+    background-color: var(--color-table-selected);
+}
+
+/*datatables*/
+
+/*sliders*/
+[data-bs-theme=dark] .slider-track {
+    background-color: var(--color-bg-card-header);
+    background-image: linear-gradient(to bottom, var(--color-bg-card-header), var(--color-bg-card-header));
+}
+
+/*sliders*/
+
+/*modals*/
+[data-bs-theme=dark] .modal-header {
+    border-bottom: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .modal-content {
+    background-color: var(--color-bg-jumbotron);
+    border: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .modal-footer {
+    border-top: 1px solid var(--color-bg-card-header);
+}
+
+/*modals*/
+
+/*lines*/
+[data-bs-theme=dark] hr {
+    background-color: var(--color-bg-card-header);
+}
+
+/*lines*/
+
+/*tags input*/
+[data-bs-theme=dark] .bootstrap-tagsinput {
+    background-color: var(--color-bg-table);
+    border-color: var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .bootstrap-tagsinput:focus-within {
+    border-color: var(--color-bg-card-header);
+}
+
+/*tags input*/
+
+/*all input fields*/
+[data-bs-theme=dark] input[type=date],
+[data-bs-theme=dark] input[type=datetime-local],
+[data-bs-theme=dark] input[type=file],
+[data-bs-theme=dark] input[type=number],
+[data-bs-theme=dark] input[type=password],
+[data-bs-theme=dark] input[type=reset],
+[data-bs-theme=dark] input[type=range],
+[data-bs-theme=dark] input[type=search],
+[data-bs-theme=dark] input[type=submit],
+[data-bs-theme=dark] input[type=text],
+[data-bs-theme=dark] input[type=url],
+[data-bs-theme=dark] .custom-file-label, /*upload btn*/
+[data-bs-theme=dark] .custom-file-label::after,
+[data-bs-theme=dark] textarea {
+    background-color: var(--color-bg-table);
+    color: var(--color-text-light);
+    border-color: var(--color-bg-card-header) !important;
+    /* Source: https://stackoverflow.com/questions/62162645/change-color-of-calendar-icon-in-html-date-input */
+    /* This turns all input icons (calendar picker, time...) to white color */
+    color-scheme: dark;
+}
+
+[data-bs-theme=dark] input[type]:focus {
+    background-color: var(--color-bg-table);
+    color: var(--color-text-light);
+}
+
+/* file upload input button styling */
+[data-bs-theme=dark] .form-control::file-selector-button{
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+[data-bs-theme=dark] .input-group-text {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-card-header);
+    border-color: transparent;
+}
+
+/*all input fields*/
+
+/*select box*/
+[data-bs-theme=dark] select,
+[data-bs-theme=dark] select:focus,
+[data-bs-theme=dark] select option {
+    background-color: var(--color-bg-table);
+    color: var(--color-text-light);
+    border-color: var(--color-bg-card-header);
+}
+
+/*select box*/
+
+/*bs-select*/
+[data-bs-theme=dark] .bootstrap-select {
+    background-color: var(--color-bg-table);
+}
+
+/*bs-select*/
+
+/*autofill*/
+[data-bs-theme=dark] input:-webkit-autofill,
+[data-bs-theme=dark] input:-webkit-autofill:hover,
+[data-bs-theme=dark] input:-webkit-autofill:focus,
+[data-bs-theme=dark] input:-webkit-autofill:active,
+[data-bs-theme=dark] textarea:-webkit-autofill,
+[data-bs-theme=dark] textarea:-webkit-autofill:hover,
+[data-bs-theme=dark] textarea:-webkit-autofill:focus,
+[data-bs-theme=dark] select:-webkit-autofill,
+[data-bs-theme=dark] select:-webkit-autofill:hover,
+[data-bs-theme=dark] select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-text-light);
+    -webkit-box-shadow: 0 0 0 1000px var(--color-bg-table) inset;
+}
+
+/*autofill*/
+
+/*outlined btns*/
+
+[data-bs-theme=dark] input.btn-outline-primary{
+    color: var(--color-btn-primary-dark);
+    border-color: var(--color-btn-primary-dark) !important;
+}
+
+[data-bs-theme=dark] .btn-outline-primary {
+    color: var(--color-btn-primary-dark);
+}
+
+[data-bs-theme=dark] .btn-outline-primary:hover,
+[data-bs-theme=dark] input.btn-outline-primary:hover {
+    color: var(--color-text-light-hover);
+    background-color: var(--color-btn-primary) !important;
+    border-color: var(--color-btn-primary);
+}
+
+/*outlined btns*/
+
+/*dropdown*/
+[data-bs-theme=dark] .dropdown-menu {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-table);
+    border: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .dropdown-divider {
+    border-top: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .dropdown-item {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-table);
+}
+
+[data-bs-theme=dark] .dropdown-item:focus,
+[data-bs-theme=dark] .dropdown-item:hover {
+    color: var(--color-text-light);
+    background-color: var(--color-table-hover);
+}
+
+[data-bs-theme=dark] .dropdown-item.active,
+[data-bs-theme=dark] .dropdown-item:active {
+    color: var(--color-text-light);
+    background-color: var(--color-btn-primary);
+}
+
+[data-bs-theme=dark] .dropdown-item.disabled,
+[data-bs-theme=dark] .dropdown-item:disabled {
+    color: var(--color-text-disabled);
+}
+
+/*dropdown*/
+
+/*pagination links*/
+[data-bs-theme=dark] .page-link {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-table);
+    border: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .page-link:hover {
+    color: var(--color-text-light);
+    background-color: var(--color-table-hover);
+    border: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .page-item.active .page-link {
+    color: var(--color-text-light);
+    background-color: var(--color-btn-primary);
+    border: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .page-item.disabled .page-link {
+    color: var(--color-text-disabled);
+    background-color: var(--color-bg-table);
+    border: 1px solid var(--color-bg-card-header);
+}
+
+/*pagination links*/
+
+/*tabs (nav-tab > nav-item > nav-link)*/
+[data-bs-theme=dark] .nav-link.disabled {
+    color: var(--color-text-disabled);
+}
+
+[data-bs-theme=dark] .nav-tabs {
+    border-bottom: 1px solid var(--color-bg-card-header);
+}
+
+[data-bs-theme=dark] .nav-tabs .nav-link {
+    border: 1px solid transparent;
+}
+
+[data-bs-theme=dark] .nav-tabs .nav-link:hover,
+[data-bs-theme=dark] .nav-tabs .nav-link:focus {
+    border-color: var(--color-bg-card-header) var(--color-bg-card-header) transparent;
+}
+
+[data-bs-theme=dark] .nav-tabs .nav-link.active,
+[data-bs-theme=dark] .nav-tabs .nav-item.show .nav-link {
+    color: var(--color-text-light);
+    background-color: var(--color-bg);
+    border-color: var(--color-bg-card-header) var(--color-bg-card-header) transparent;
+}
+
+/*tabs*/
+
+/*carousels*/
+
+[data-bs-theme=dark] .carousel-control-prev,
+[data-bs-theme=dark] .carousel-control-next {
+    color: var(--color-text-light);
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+}
+
+[data-bs-theme=dark] .carousel-control-prev:hover,
+[data-bs-theme=dark] .carousel-control-prev:focus,
+[data-bs-theme=dark] .carousel-control-next:hover,
+[data-bs-theme=dark] .carousel-control-next:focus {
+    color: var(--color-text-light);
+    text-decoration: none;
+    outline: 0;
+    opacity: 0.9;
+}
+
+[data-bs-theme=dark] .carousel-indicators li {
+    background-clip: padding-box;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    opacity: .5;
+    transition: opacity 0.6s ease;
+}
+
+[data-bs-theme=dark] .carousel .carousel-indicators [data-bs-target], [data-bs-theme=dark].carousel .carousel-indicators [data-bs-target] {
+    background-color: var(--bs-light) !important;
+}
+
+[data-bs-theme=dark] .carousel-caption {
+    color: var(--color-text-light);
+}
+
+/*carousels*/
+
+/*ANSYS Viewer*/
+
+[data-bs-theme=dark] .avz-viewer .view-man-panel {
+    background: var(--color-bg) !important;
+}
+
+[data-bs-theme=dark] .avz-viewer .view-man-panel label,
+[data-bs-theme=dark] .avz-viewer .view-man-panel a {
+    color: var(--color-text-light) !important;
+}
+
+[data-bs-theme=dark] .avz-viewer .view-man-panel a:hover {
+    color: var(--color-table-selected) !important;
+}
+
+[data-bs-theme=dark] .avz-viewer .view-man-panel label:hover {
+    color: var(--color-btn-primary-light) !important;
+}
+
+/* ANSYS Viewer */
+
+/*Babylon viewer*/
+
+[data-bs-theme=dark] .babylon-viewer .part-panel,
+[data-bs-theme=dark] .babylon-viewer .info-panel {
+    background-color: rgba(var(--color-bg), 0.5) !important;
+}
+
+/*Babylon viewer*/
+
+/*context menu*/
+[data-bs-theme=dark] .context-menu-list,
+[data-bs-theme=dark] .context-menu-item {
+    color: var(--color-text-light);
+    background-color: var(--color-bg-jumbotron);
+    border-color: var(--color-bg);
+}
+
+[data-bs-theme=dark] .context-menu-item.context-menu-disabled {
+    color: #bbb;
+    cursor: default;
+    background-color: var(--color-bg-jumbotron);
+}
+
+/*context menu*/
+/* Styling based on .btn-outline-light */
+[data-bs-theme=dark] .btn-outline-secondary{
+    --bs-btn-color:#f8f9fa;--bs-btn-border-color:#f8f9fa;--bs-btn-hover-color:#000;--bs-btn-hover-bg:#f8f9fa;--bs-btn-hover-border-color:#f8f9fa;--bs-btn-focus-shadow-rgb:248,249,250;--bs-btn-active-color:#000;--bs-btn-active-bg:#f8f9fa;--bs-btn-active-border-color:#f8f9fa;--bs-btn-active-shadow:inset 0 3px 5px rgba(0, 0, 0, 0.125);--bs-btn-disabled-color:#f8f9fa;--bs-btn-disabled-bg:transparent;--bs-btn-disabled-border-color:#f8f9fa;--bs-gradient:none;
+}
+
+/* Badge with link hover effect */
+[data-bs-theme=dark] a>.badge:hover{
+    background-color: var(--bs-secondary-border-subtle) !important;
+}
